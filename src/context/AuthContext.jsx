@@ -62,13 +62,19 @@ export function AuthProvider({ children }) {
     [loadUser, persistToken]
   );
 
-  /** PUT /api/user/profile {name} -> {name, email} */
+  
+  /** PUT /api/user/profile {name, username, bio, headline} -> full profile */
   const updateProfile = useCallback(
-    async (name) => {
+    async (profile) => {
       setBusy(true);
       setError('');
       try {
-        const { data } = await api.put('/api/user/profile', { name });
+        const { data } = await api.put('/api/user/profile', {
+          name: profile.name.trim(),
+          username: profile.username?.trim() || null,
+          bio: profile.bio?.trim() || null,
+          headline: profile.headline?.trim() || null,
+        });
         store.setUser(data);
         setUser(data);
         return true;
@@ -81,6 +87,7 @@ export function AuthProvider({ children }) {
     },
     []
   );
+
 
   const logout = useCallback(() => {
     store.clearToken();
