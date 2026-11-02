@@ -25,16 +25,3 @@ export function fmtClock(totalSeconds) {
   const m = Math.floor(s / 60);
   return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
-
-/** HTTP probe helper for the Setup Status page. */
-export async function probe(request) {
-  try {
-    const res = await request();
-    return { ok: true, status: res.status, body: res.data };
-  } catch (error) {
-    if (error.response) {
-      return { ok: false, status: error.response.status, body: error.response.data };
-    }
-    return { ok: false, status: 0, body: null, network: true };
-  }
-}

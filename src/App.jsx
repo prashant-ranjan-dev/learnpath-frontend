@@ -15,7 +15,6 @@ import QuizResultsPage from './pages/QuizResultsPage';
 import WeaknessPage from './pages/WeaknessPage';
 import ProgressPage from './pages/ProgressPage';
 import ProfilePage from './pages/ProfilePage';
-import StatusPage from './pages/StatusPage';
 
 export default function App() {
   const { token } = useAuth();
@@ -46,7 +45,6 @@ export default function App() {
           />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/status" element={<StatusPage />} />
         </Route>
       </Route>
 

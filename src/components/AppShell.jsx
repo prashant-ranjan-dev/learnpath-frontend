@@ -1,7 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   BookOpen,
-  GraduationCap,
   LayoutDashboard,
   ListChecks,
   LogOut,
@@ -16,7 +15,6 @@ const NAV_ITEMS = [
   { to: '/create', label: 'Create Path', icon: LayoutDashboard },
   { to: '/progress', label: 'Progress', icon: ListChecks },
   { to: '/profile', label: 'Profile', icon: UserIcon },
-  { to: '/status', label: 'Setup Status', icon: GraduationCap },
 ];
 
 /**
