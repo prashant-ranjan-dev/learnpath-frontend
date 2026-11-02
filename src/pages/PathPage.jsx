@@ -171,6 +171,8 @@ export default function PathPage() {
         {syllabus.modules.map((m, idx) => {
           const moduleTopics = m.topics.length;
           const moduleDone = m.topics.filter((t) => t.completed).length;
+          const allTopicsCompleted =
+            moduleTopics > 0 && moduleDone === moduleTopics;
           const open = !!openModules[m.id];
           const nextTopic = m.topics.find((t) => !t.completed);
 
@@ -276,19 +278,23 @@ export default function PathPage() {
                     );
                   })}
 
-                  {/* Quiz entry — backend gates it until all topics are completed */}
+                  {/* Quiz becomes available when every topic is complete and the module is unlocked. */}
                   <div className="mt-2 flex items-center gap-4 rounded-xl bg-slate-50 px-3 py-3">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-white">
                       <ClipboardList size={14} />
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
+                    <span className="min-w-0 flex-1 text-sm font-semibold text-ink">
                       Module Quiz
                     </span>
-                    {m.completed ? (
+                    {allTopicsCompleted && m.unlocked ? (
                       <button
+                        type="button"
                         onClick={async () => {
                           try {
-                            const { data } = await api.post(`/api/quizzes/modules/${m.id}`);
+                            setError('');
+                            const { data } = await api.post(
+                              `/api/quizzes/modules/${m.id}`
+                            );
                             quizRef.set(m.id, data.quizId);
                             navigate(`/paths/${syllabusId}/modules/${m.id}/quiz`);
                           } catch (e) {
@@ -297,11 +303,13 @@ export default function PathPage() {
                         }}
                         className="btn-dark px-4 py-1.5 text-xs"
                       >
-                        Open quiz
+                        Generate / Open Quiz
                       </button>
                     ) : (
                       <span className="chip bg-slate-100 text-slate-500">
-                        Complete all topics first
+                        {!m.unlocked
+                          ? 'Complete previous module quiz first'
+                          : 'Complete all topics first'}
                       </span>
                     )}
                   </div>
