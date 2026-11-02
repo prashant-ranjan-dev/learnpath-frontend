@@ -1,55 +1,87 @@
-# LearnPath AI — React Frontend
+# LearnPath AI — Frontend
 
-A Vite + React 18 SPA for LearnPath AI, wired **only** to the endpoints that exist
-on the [`backend_improvements`](https://github.com/prashant-ranjan-dev/learnpath/tree/backend_improvements)
-branch of the Spring Boot backend. Styled after the 12 design screens (emerald/
-navy palette, Plus Jakarta Sans, rounded cards). Features that were scoped out of
-v1 (XP, streak, notifications, search, Explore/Notes, social login, password
-reset, quiz timer, profile bio/avatar, About/Resources tabs) are intentionally absent.
+LearnPath AI is a React single-page application for creating personalized learning paths, studying lessons, completing module quizzes, reviewing results, and tracking learning progress.
 
-## Quick start
+## Technology stack
+
+- React 18
+- Vite
+- React Router
+- Axios
+- Tailwind CSS
+- Lucide icons
+
+## Getting started
+
+### Prerequisites
+
+- Node.js and npm
+- The LearnPath Spring Boot backend running locally or at a configured API URL
+- Backend environment variables configured as required by the backend project
+
+### Installation
 
 ```bash
 npm install
-cp .env.example .env      # set VITE_API_BASE_URL if the backend is not on :8080
-npm run dev               # http://localhost:5173  (origin already allowed by backend CORS)
 ```
 
-The backend must be running (`backend_improvements` branch, default
-`http://localhost:8080`) with `DB_PASSWORD` and `GOOGLE_API_KEY` set.
+Create a `.env` file from `.env.example` and configure the backend URL:
 
-## Setup Status page (`/status`)
+```env
+VITE_API_BASE_URL=http://localhost:8080
+```
 
-A built-in checklist that pings every endpoint the UI depends on and shows
-pass/fail per feature. It proves route-by-route that the backend contract holds
-(handled 400/401/404 responses count as "reachable" — the endpoint exists).
-AI-backed flows (path generation, quiz generation, weakness analysis) are probed
-for validation only and otherwise tested from the UI, since they cost tokens.
+Start the development server:
 
-## Pages ↔ backend contract
+```bash
+npm run dev
+```
 
-| Route | Screen | Endpoints used |
-|---|---|---|
-| `/` | Landing (static) | — |
-| `/login`, `/signup` | Auth | `POST /api/auth/login`, `POST /api/auth/signup` |
-| `/create` | 5-step path wizard | `POST /api/syllabus` |
-| `/paths` | My paths grid | `GET /api/syllabus/my` |
-| `/paths/:id` | Curriculum accordion | `GET /api/syllabus/{id}`, `POST /api/quizzes/modules/{id}` |
-| `/paths/:sid/modules/:mid/topics/:tid` | Lesson reader + sidebar | `GET /api/topics/{tid}/content`, `POST /api/topics/{tid}/complete`, `GET /api/syllabus/{sid}` |
-| `/paths/:sid/modules/:mid/quiz` | One-question-at-a-time quiz | `POST /api/quizzes/modules/{mid}`, `POST /api/quizzes/{qid}/attempts/start`, `POST /api/quizzes/{qid}/submit` |
-| `/paths/:sid/modules/:mid/quiz/results` | Score ring + breakdown | `GET /api/quizzes/{qid}/result` |
-| `/paths/:sid/modules/:mid/quiz/analysis` | AI weakness analysis | `POST /api/quizzes/{qid}/analyze` |
-| `/progress` | Lifetime analytics | `GET /api/user/dashboard` |
-| `/profile` | Name/email editor | `GET`/`PUT /api/user/profile` |
-| `/status` | Endpoint checklist | all of the above (probes) |
+Run the production build:
 
-## Known backend gaps surfaced by the UI (v1 checklist)
+```bash
+npm run build
+```
 
-- Quiz `quizId` per module is kept in `localStorage` (`src/lib/api.js` → `quizRef`)
-  because the backend has no "get quiz by module" GET endpoint.
-- Weakness analysis re-runs the AI on every view (nothing is persisted) and has
-  no severity/mastery fields.
-- No streak / XP / activity / time-spent data anywhere → dashboard shows
-  derivable counts only.
-- Progress page has no timeframe filters (no timestamps stored).
-- Profile has no username/headline/bio/avatar/join-date fields.
+Preview the production build:
+
+```bash
+npm run preview
+```
+
+## Backend
+
+The frontend integrates with the [`learnpath` backend](https://github.com/prashant-ranjan-dev/learnpath), using the `backend_improvements` branch as the current API reference.
+
+The backend must be configured with its required database and AI-provider settings.
+
+## Application routes
+
+| Route | Purpose |
+|---|---|
+| `/` | Landing page |
+| `/login` | Sign in |
+| `/signup` | Create an account |
+| `/create` | Create a personalized learning path |
+| `/paths` | View learning paths |
+| `/paths/:syllabusId` | View curriculum and module progress |
+| `/paths/:syllabusId/modules/:moduleId/topics/:topicId` | Read a lesson and mark it complete |
+| `/paths/:syllabusId/modules/:moduleId/quiz` | Take a module quiz |
+| `/paths/:syllabusId/modules/:moduleId/quiz/results` | Review quiz results |
+| `/paths/:syllabusId/modules/:moduleId/quiz/analysis` | Review AI-generated weakness analysis |
+| `/progress` | View learning analytics |
+| `/profile` | View and edit profile information |
+
+## Main learner flows
+
+1. Register or sign in.
+2. Create a learning path based on a topic, current understanding, desired depth, and goal.
+3. Explore modules and topics in the generated curriculum.
+4. Read lesson content and record topic completion.
+5. Complete module quizzes when eligible.
+6. Review quiz results and weakness analysis.
+7. Track progress and update profile information.
+
+## Development and verification
+
+Use the application's normal pages to verify learner workflows. Automated tests and CI checks should be used for repeatable API and integration testing rather than exposing an endpoint-diagnostic page in the learner interface.
