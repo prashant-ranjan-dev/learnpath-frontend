@@ -15,15 +15,32 @@ import api, { apiError } from '../lib/api';
 
 /**
  * Lesson reader for one topic.
- * Data: GET /api/topics/{topicId}/content -> {topicId, topicName, content}
- * (AI markdown, generated lazily on first view, cached by the backend)
- * and GET /api/syllabus/{syllabusId} for the sidebar.
+ * Fetches generated lesson content and syllabus metadata, including
+ * topic descriptions, estimated durations, and completion state.
  *
- * Design elements NOT rendered (no backend source): estimated time, tech tag,
- * difficulty pill, Notes/Discussion tabs. "Mark as Complete" ->
- * POST /api/topics/{topicId}/complete (204). The backend refuses with 409 if
- * the module is locked or the content was never loaded.
+ * "Mark as Complete" -> POST /api/topics/{topicId}/complete (204).
+ * The backend refuses with 409 if the module is locked or the content
+ * was never loaded.
  */
+function formatTopicDuration(minutes) {
+  const value = Number(minutes);
+
+  if (!Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+
+  if (value < 60) {
+    return `${value} min`;
+  }
+
+  const hours = Math.floor(value / 60);
+  const remainingMinutes = value % 60;
+
+  return remainingMinutes > 0
+    ? `${hours} hr ${remainingMinutes} min`
+    : `${hours} hr`;
+}
+
 export default function LessonPage() {
   const { syllabusId, moduleId, topicId } = useParams();
   const [content, setContent] = useState(null);
@@ -108,7 +125,7 @@ export default function LessonPage() {
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         {/* Sidebar: module outline */}
         {moduleData && (
-          <aside className="card h-fit p-5 lg:sticky lg:top-6">
+          <aside className="card h-fit min-w-0 p-5 lg:sticky lg:top-6">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-extrabold text-ink">{moduleData.title}</h3>
               <span className="chip bg-slate-100 text-slate-600">
@@ -141,7 +158,29 @@ export default function LessonPage() {
                       >
                         {t.completed ? <Check size={12} /> : i + 1}
                       </span>
-                      <span className="min-w-0 flex-1 truncate">{t.name}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate">{t.name}</span>
+
+                        {t.description && (
+                          <span
+                            className={`mt-0.5 block truncate text-xs font-normal ${
+                              current ? 'text-slate-300' : 'text-slate-400'
+                            }`}
+                          >
+                            {t.description}
+                          </span>
+                        )}
+
+                        {formatTopicDuration(t.estimatedMinutes) && (
+                          <span
+                            className={`mt-0.5 block text-xs font-normal ${
+                              current ? 'text-slate-300' : 'text-slate-400'
+                            }`}
+                          >
+                            {formatTopicDuration(t.estimatedMinutes)}
+                          </span>
+                        )}
+                      </span>
                     </Link>
                   </li>
                 );
@@ -165,7 +204,7 @@ export default function LessonPage() {
         )}
 
         {/* Reader */}
-        <article className="card min-h-[60vh] p-8">
+        <article className="card min-h-[60vh] min-w-0 p-8">
           {loading && (
             <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-slate-500">
               <Loader2 className="animate-spin text-brand-600" size={36} />
@@ -197,7 +236,23 @@ export default function LessonPage() {
           {!loading && content && (
             <>
               <header className="border-b border-slate-100 pb-5">
-                <h1 className="text-3xl font-extrabold text-ink">{content.topicName}</h1>
+                <h1 className="text-3xl font-extrabold text-ink">
+                  {content.topicName}
+                </h1>
+
+                {topic?.description && (
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                    {topic.description}
+                  </p>
+                )}
+
+                {formatTopicDuration(topic?.estimatedMinutes) && (
+                  <p className="mt-2 text-xs font-medium text-slate-400">
+                    <span aria-hidden="true">◷ </span>
+                    {formatTopicDuration(topic?.estimatedMinutes)} estimated
+                  </p>
+                )}
+
                 {topic?.completed && (
                   <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-brand-600">
                     <CheckCircle2 size={14} /> Completed
