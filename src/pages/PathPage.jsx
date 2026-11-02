@@ -16,15 +16,29 @@ import { fmtHours, pct } from '../lib/strings';
 
 /**
  * Path curriculum screen (accordion modules over a progress hero).
- * Data: GET /api/syllabus/{id} -> {syllabusId, topic, modules:[{id, title,
- * estimatedHours, completed, unlocked, topics:[{id, name, completed}]}]}.
- *
- * Design elements rendered with derived data: module counts, "n of N topics
- * completed", continue-here highlighting. Design elements NOT rendered because
- * the backend has no source for them (per the gap analysis): path title /
- * description / skills, topic subtitles & durations, About/Resources tabs,
- * study-streak tip, overall percentage in the header.
+ * Data comes from GET /api/syllabus/{id}, including path, module,
+ * and topic descriptions, estimated durations, and completion state.
  */
+
+function formatTopicDuration(minutes) {
+  const value = Number(minutes);
+
+  if (!Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+
+  if (value < 60) {
+    return `${value} min`;
+  }
+
+  const hours = Math.floor(value / 60);
+  const remainingMinutes = value % 60;
+
+  return remainingMinutes > 0
+    ? `${hours} hr ${remainingMinutes} min`
+    : `${hours} hr`;
+}
+
 export default function PathPage() {
   const { syllabusId } = useParams();
   const navigate = useNavigate();
@@ -102,6 +116,11 @@ export default function PathPage() {
           </span>
         </div>
         <h1 className="mt-4 text-4xl font-extrabold text-ink">{syllabus.topic}</h1>
+        {syllabus.description && (
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+            {syllabus.description}
+          </p>
+        )}
         <p className="mt-2 text-sm text-slate-500">
           {syllabus.modules.length} modules • {totalTopics} topics •{' '}
           {fmtHours(syllabus.modules.reduce((s, m) => s + (m.estimatedHours || 0), 0))} estimated
@@ -162,13 +181,12 @@ export default function PathPage() {
                 className="flex w-full items-center gap-4 px-6 py-5 text-left"
               >
                 <span
-                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold ${
-                    m.completed
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold ${m.completed
                       ? 'bg-brand-600 text-white'
                       : m.unlocked
                         ? 'bg-brand-100 text-brand-700'
                         : 'bg-slate-100 text-slate-400'
-                  }`}
+                    }`}
                 >
                   {m.completed ? <Check size={18} /> : String(idx + 1).padStart(2, '0')}
                 </span>
@@ -176,6 +194,11 @@ export default function PathPage() {
                   <span className="block truncate text-base font-extrabold text-ink">
                     {m.title}
                   </span>
+                  {m.description && (
+                    <span className="mt-1 block text-sm leading-5 text-slate-500">
+                      {m.description}
+                    </span>
+                  )}
                   <span className="block text-xs text-slate-500">
                     {moduleTopics} topics • {fmtHours(m.estimatedHours)}
                   </span>
@@ -199,21 +222,33 @@ export default function PathPage() {
                     return (
                       <div
                         key={t.id}
-                        className={`flex items-center gap-4 rounded-xl px-3 py-3 ${
-                          active ? 'bg-brand-100/40' : ''
-                        }`}
+                        className={`flex items-center gap-4 rounded-xl px-3 py-3 ${active ? 'bg-brand-100/40' : ''
+                          }`}
                       >
                         <span
-                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                            t.completed
+                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${t.completed
                               ? 'bg-brand-600 text-white'
                               : 'bg-slate-100 text-slate-500'
-                          }`}
+                            }`}
                         >
                           {t.completed ? <Check size={14} /> : tIdx + 1}
                         </span>
-                        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
-                          {t.name}
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold text-ink">
+                            {t.name}
+                          </span>
+
+                          {t.description && (
+                            <span className="mt-1 block text-xs leading-5 text-slate-500">
+                              {t.description}
+                            </span>
+                          )}
+
+                          {formatTopicDuration(t.estimatedMinutes) && (
+                            <span className="mt-1 block text-xs text-slate-400">
+                              {formatTopicDuration(t.estimatedMinutes)} estimated
+                            </span>
+                          )}
                         </span>
                         {!t.completed && tIdx === 0 && (
                           <span className="chip hidden bg-ink text-white sm:inline-flex">
