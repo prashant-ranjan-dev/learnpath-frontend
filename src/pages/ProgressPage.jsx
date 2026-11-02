@@ -1,20 +1,31 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, BarChart3, Loader2, Plus } from 'lucide-react';
+import { ArrowRight, BarChart3, CheckCircle2, Clock3, Loader2, Plus, Trophy, } from 'lucide-react';
 import api, { apiError } from '../lib/api';
 import { pct } from '../lib/strings';
 
 /**
- * Progress & Analytics — GET /api/user/dashboard -> DashboardResponse:
- * {totalLearningPaths, totalModules, completedModules, totalTopics,
- *  completedTopics, progressPercent, totalQuizAttempts, passedQuizAttempts,
- *  recentLearningPaths: [{syllabusId, topic, totalModules, completedModules,
- *                         totalTopics, completedTopics, progressPercent}]}.
- *
- * Design elements NOT rendered (no backend source): timeframe filters
- * (nothing time-stamped is stored), "Currently on: Module X", "Last active",
- * study-hours chart, milestones, Download Report.
+ * Progress & Analytics — GET /api/user/dashboard.
+ * Uses lifetime progress, quiz performance, continue-learning details,
+ * recent learning-path summaries, and recent activity from DashboardResponse.
  */
+
+
+function formatActivityTime(value) {
+  if (!value) return 'Time unavailable';
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Time unavailable';
+  }
+
+  return date.toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+}
+
 export default function ProgressPage() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
@@ -58,7 +69,7 @@ export default function ProgressPage() {
       </div>
 
       {/* Lifetime summary */}
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <SummaryTile
           label="Overall Progress"
           value={`${lifetimePercent}%`}
@@ -79,7 +90,46 @@ export default function ProgressPage() {
           value={`${data.passedQuizAttempts}/${data.totalQuizAttempts}`}
           hint="attempts passed"
         />
+        <SummaryTile
+          label="Average Quiz Score"
+          value={`${pct(data.averageQuizScorePercent)}%`}
+          hint="across submitted attempts"
+        />
       </div>
+
+      {/* Continue learning */}
+      {data.continueLearning && (
+        <div className="card mt-6 flex flex-wrap items-center gap-4 p-6">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-700">
+            <ArrowRight size={20} />
+          </span>
+
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+              Continue Learning
+            </p>
+            <h2 className="mt-1 text-lg font-extrabold text-ink">
+              {data.continueLearning.topic}
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              {data.continueLearning.moduleTitle} ·{' '}
+              {data.continueLearning.topicTitle}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              navigate(
+                `/paths/${data.continueLearning.syllabusId}/modules/${data.continueLearning.moduleId}/topics/${data.continueLearning.topicId}`
+              )
+            }
+            className="btn-dark"
+          >
+            Continue <ArrowRight size={16} />
+          </button>
+        </div>
+      )}
 
       {/* Paths list */}
       <div className="card mt-6 p-6">
@@ -103,12 +153,25 @@ export default function ProgressPage() {
           )}
           {data.recentLearningPaths.map((p) => {
             const percent = pct(p.progressPercent);
-            const status =
-              p.completedModules === 0
-                ? { label: 'Ready to Start', cls: 'bg-amber-50 text-amber-700' }
-                : p.completedModules === p.totalModules
-                  ? { label: 'Completed', cls: 'bg-brand-100 text-brand-700' }
-                  : { label: 'In Progress', cls: 'bg-indigo-50 text-indigo-600' };
+            const statusMap = {
+              NOT_STARTED: {
+                label: 'Ready to Start',
+                cls: 'bg-amber-50 text-amber-700',
+              },
+              IN_PROGRESS: {
+                label: 'In Progress',
+                cls: 'bg-indigo-50 text-indigo-600',
+              },
+              COMPLETED: {
+                label: 'Completed',
+                cls: 'bg-brand-100 text-brand-700',
+              },
+            };
+
+            const status = statusMap[p.status] ?? {
+              label: 'In Progress',
+              cls: 'bg-indigo-50 text-indigo-600',
+            };
             return (
               <div key={p.syllabusId} className="rounded-2xl border border-slate-200 p-5">
                 <div className="flex flex-wrap items-center gap-3">
@@ -128,6 +191,17 @@ export default function ProgressPage() {
                     <p className="text-xs text-slate-500">
                       {p.totalModules} modules • {p.totalTopics} topics •{' '}
                       {p.completedTopics} completed
+                    </p>
+                    {p.description && (
+                      <p className="mt-1 line-clamp-2 text-sm text-slate-500">
+                        {p.description}
+                      </p>
+                    )}
+                    <p className="mt-1 flex flex-wrap items-center gap-1 text-xs text-slate-400">
+                      <Clock3 size={12} />
+                      {Number(p.estimatedHours || 0)} estimated hours
+                      <span>·</span>
+                      Last active: {formatActivityTime(p.lastActiveAt)}
                     </p>
                   </div>
                   <button
@@ -153,9 +227,98 @@ export default function ProgressPage() {
           })}
         </div>
       </div>
+
+      {/* Recent activity */}
+      <div className="card mt-6 p-6">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-100 text-brand-700">
+            <CheckCircle2 size={18} />
+          </span>
+          <div>
+            <h2 className="text-xl font-extrabold text-ink">
+              Recent Activity
+            </h2>
+            <p className="text-xs text-slate-400">
+              Your latest topic completions and quiz submissions.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 space-y-3">
+          {(data.recentActivity ?? []).length === 0 && (
+            <p className="rounded-xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+              No recent activity yet. Complete a topic or submit a quiz to see it here.
+            </p>
+          )}
+
+          {(data.recentActivity ?? []).map((activity, index) => {
+            const quizSubmitted = activity.type === 'QUIZ_SUBMITTED';
+            const passed = activity.status === 'PASSED';
+
+            return (
+              <div
+                key={`${activity.type}-${activity.itemId}-${activity.occurredAt}-${index}`}
+                className="flex items-start gap-3 rounded-xl border border-slate-100 p-4"
+              >
+                <span
+                  className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                    quizSubmitted
+                      ? passed
+                        ? 'bg-brand-100 text-brand-700'
+                        : 'bg-red-50 text-red-600'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {quizSubmitted ? <Trophy size={16} /> : <CheckCircle2 size={16} />}
+                </span>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-ink">
+                    {activity.title}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {activity.learningPathTopic}
+                    {activity.moduleTitle ? ` · ${activity.moduleTitle}` : ''}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    {formatActivityTime(activity.occurredAt)}
+                  </p>
+                </div>
+
+                <div className="shrink-0 text-right">
+                  <span
+                    className={`chip ${
+                      quizSubmitted
+                        ? passed
+                          ? 'bg-brand-100 text-brand-700'
+                          : 'bg-red-50 text-red-600'
+                        : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {quizSubmitted
+                      ? passed
+                        ? 'Passed'
+                        : 'Failed'
+                      : 'Completed'}
+                  </span>
+
+                  {quizSubmitted &&
+                    activity.score != null &&
+                    activity.totalQuestions != null && (
+                      <p className="mt-2 text-xs font-semibold text-slate-500">
+                        {activity.score}/{activity.totalQuestions}
+                      </p>
+                    )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
+
 
 function SummaryTile({ label, value, hint }) {
   return (
